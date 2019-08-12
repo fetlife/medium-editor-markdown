@@ -30,6 +30,7 @@ module.exports = function (options, callback) {
     options.events = options.events || ["input", "change"];
     callback = callback || options.callback || function () {};
 
+    var turndownService = options.turndownService
     var toTurndownOptions = options.toTurndownOptions = Object(options.toTurndownOptions);
     toTurndownOptions.converters = toTurndownOptions.converters || [];
 
@@ -82,7 +83,7 @@ module.exports = function (options, callback) {
                 normalizeList($lists[i]);
             }
 
-            callback( new TurndownService(options.toTurndownOptions).turndown($clone.innerHTML).split("\n").map(function (c) {
+            callback(turndownService || new TurndownService(options.toTurndownOptions).turndown($clone.innerHTML).split("\n").map(function (c) {
                 return c.replace(rightWhitespace, '');
             }).join("\n").replace(rightWhitespace, ''));
         }.bind(this);
