@@ -83,7 +83,7 @@ module.exports = function (options, callback) {
                 normalizeList($lists[i]);
             }
 
-            callback(turndownService || new TurndownService(options.toTurndownOptions).turndown($clone.innerHTML).split("\n").map(function (c) {
+            callback((turndownService || new TurndownService(options.toTurndownOptions)).turndown($clone.innerHTML).split("\n").map(function (c) {
                 return c.replace(rightWhitespace, '');
             }).join("\n").replace(rightWhitespace, ''));
         }.bind(this);
