@@ -78,9 +78,11 @@ module.exports = function (options, callback) {
 
         var handler = function () {
             var $clone = this.element.cloneNode(true);
-            var $lists = $clone.querySelectorAll("ul, ol");
-            for (var i = 0; i < $lists.length; ++i) {
-                normalizeList($lists[i]);
+            if (options.normalizeList !== false) {
+                var $lists = $clone.querySelectorAll("ul, ol");
+                for (var i = 0; i < $lists.length; ++i) {
+                    normalizeList($lists[i]);
+                }
             }
 
             callback((turndownService || new TurndownService(options.toTurndownOptions)).turndown($clone.innerHTML).split("\n").map(function (c) {
