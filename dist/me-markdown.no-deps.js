@@ -15,21 +15,22 @@
     options.events = options.events || ["input", "change"];
     callback = callback || options.callback || function () {};
 
-    var toTurnDownOptions = options.toTurnDownOptions = Object(options.toTurnDownOptions);
-    toTurnDownOptions.converters = toTurnDownOptions.converters || [];
+    var toTurndownOptions = options.toTurndownOptions = Object(options.toTurndownOptions);
+    toTurndownOptions.converters = toTurndownOptions.converters || [];
+    toTurndownOptions.customRules = toTurndownOptions.customRules || [];
 
-    if (!options.ignoreBuiltInConverters) {
-        toTurnDownOptions.converters.push({
-            filter: function (node) {
+    if (!options.ignoreBuiltinConverters) {
+        toTurndownOptions.converters.push({
+            filter: function filter(node) {
                 return node.nodeName === "DIV" && !node.attributes.length;
-            }
-          , replacement: function (content) {
+            },
+            replacement: function replacement(content) {
                 return content;
             }
         });
     }
 
-    function normalizeList ($elm) {
+    function normalizeList($elm) {
         var $children = $elm.children;
         for (var i = 0; i < $children.length; ++i) {
             var $cChild = $children[i];
@@ -40,7 +41,9 @@
             if (/^UL|OL$/.test($cChild.tagName)) {
                 try {
                     $prevChild.appendChild($cChild);
-                } catch (e) { console.warn(e); }
+                } catch (e) {
+                    console.warn(e);
+                }
                 normalizeList($cChild);
             }
         }
@@ -67,14 +70,27 @@
                 normalizeList($lists[i]);
             }
 
-            callback( new TurndownService(options.toTurnDownOptions).turndown($clone.innerHTML).split("\n").map(function (c) {
+            var turndownService = new TurndownService(options.toTurndownOptions);
+
+            toTurndownOptions.customRules.forEach(function (customRule) {
+                turndownService.addRule(customRule.key, {
+                    filter: customRule.filter,
+                    replacement: customRule.replacement
+                });
+            });
+
+            callback(turndownService.turndown($clone.innerHTML).split("\n").map(function (c) {
                 return c.replace(rightWhitespace, '');
             }).join("\n").replace(rightWhitespace, ''));
         }.bind(this);
 
-        options.events.forEach(function (c) {
-            this.element.addEventListener(c, handler);
-        }.bind(this));
+        if (options.subscribeToMeEditableInput) {
+            this.base.subscribe('editableInput', handler);
+        } else {
+            options.events.forEach(function (c) {
+                this.element.addEventListener(c, handler);
+            }.bind(this));
+        }
 
         handler();
     };
