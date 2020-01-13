@@ -9,6 +9,7 @@
  * @param {Object} options An object containing the following fields:
  *
  *  - `events` (Array): An array with the events when the markdown code will be generated (default: `["input", "change"]`).
+ *  - `subscribeToMeEditableInput` (Boolean): If this is true we will respond to the medium editor's custom "editableInput" event
  *  - `callback` (Function): The callback function. If the second argument is a function, then it has greater priority.
  *  - `toTurndownOptions` (Object): Options to pass to the markdown converter code.
  *  - `ignoreBuiltinConverters` (Boolean): If `true`, the default converters passed to `toMarkdown` will be ignored.
@@ -30,22 +31,23 @@ module.exports = function (options, callback) {
     options.events = options.events || ["input", "change"];
     callback = callback || options.callback || function () {};
 
-    var turndownService = options.turndownService
     var toTurndownOptions = options.toTurndownOptions = Object(options.toTurndownOptions);
+    var turndownService = options.turndownService || new TurndownService(options.toTurndownOptions)
     toTurndownOptions.converters = toTurndownOptions.converters || [];
+    toTurndownOptions.customRules = toTurndownOptions.customRules || [];
 
     if (!options.ignoreBuiltinConverters) {
         toTurndownOptions.converters.push({
-            filter: function (node) {
+            filter: function filter(node) {
                 return node.nodeName === "DIV" && !node.attributes.length;
-            }
-          , replacement: function (content) {
+            },
+            replacement: function replacement(content) {
                 return content;
             }
         });
     }
 
-    function normalizeList ($elm) {
+    function normalizeList($elm) {
         var $children = $elm.children;
         for (var i = 0; i < $children.length; ++i) {
             var $cChild = $children[i];
@@ -56,7 +58,9 @@ module.exports = function (options, callback) {
             if (/^UL|OL$/.test($cChild.tagName)) {
                 try {
                     $prevChild.appendChild($cChild);
-                } catch (e) { console.warn(e); }
+                } catch (e) {
+                    console.warn(e);
+                }
                 normalizeList($cChild);
             }
         }
@@ -85,14 +89,25 @@ module.exports = function (options, callback) {
                 }
             }
 
-            callback((turndownService || new TurndownService(options.toTurndownOptions)).turndown($clone.innerHTML).split("\n").map(function (c) {
+            toTurndownOptions.customRules.forEach(function (customRule) {
+                turndownService.addRule(customRule.key, {
+                    filter: customRule.filter,
+                    replacement: customRule.replacement
+                });
+            });
+
+            callback(turndownService.turndown($clone.innerHTML).split("\n").map(function (c) {
                 return c.replace(rightWhitespace, '');
             }).join("\n").replace(rightWhitespace, ''));
         }.bind(this);
 
-        options.events.forEach(function (c) {
-            this.element.addEventListener(c, handler);
-        }.bind(this));
+        if (options.subscribeToMeEditableInput) {
+            this.base.subscribe('editableInput', handler);
+        } else {
+            options.events.forEach(function (c) {
+                this.element.addEventListener(c, handler);
+            }.bind(this));
+        }
 
         handler();
     };
